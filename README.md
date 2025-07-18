@@ -119,3 +119,14 @@ def mostrar_painel_administrador():
 
     carregar_usuarios()
     tk.Button(painel, text="Deletar Usuário Selecionado", command=deletar_usuario).pack(pady=10)
+
+# Janela principal
+janela = tk.Tk()
+janela.title("Sistema de Cadastro de Clientes")
+janela.geometry("300x200")
+
+tk.Button(janela, text="Criar Conta", width=20, command=criar_conta).pack(pady=10)
+tk.Button(janela, text="Entrar", width=20, command=login).pack(pady=10)
+
+janela.mainloop()
+
