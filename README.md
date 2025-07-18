@@ -1,127 +1,121 @@
-# cadastro_de_clientes02
 import tkinter as tk
 from tkinter import messagebox, ttk
 import sqlite3
-import os
 
-# ---------- BANCO DE DADOS ----------
-def criar_banco():
-    if not os.path.exists("clientes.db"):
-        conn = sqlite3.connect("clientes.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS clientes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT,
-                cpf TEXT,
-                email TEXT UNIQUE,
-                telefone TEXT,
-                senha TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
+# Conecta ou cria banco
+conn = sqlite3.connect("clientes.db")
+cursor = conn.cursor()
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS clientes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        cpf TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        telefone TEXT NOT NULL,
+        senha TEXT NOT NULL
+    )
+''')
+conn.commit()
 
-# ---------- FUNÇÕES DE INTERFACE ----------
-def tela_inicial():
-    limpar_tela()
-    tk.Label(janela, text="Bem-vindo!", font=("Arial", 16)).pack(pady=20)
-    tk.Button(janela, text="Criar Conta", width=30, command=tela_cadastro).pack(pady=10)
-    tk.Button(janela, text="Entrar", width=30, command=tela_login).pack(pady=10)
+# Funções principais
+def criar_conta():
+    def salvar_dados():
+        nome = entry_nome.get()
+        cpf = entry_cpf.get()
+        email = entry_email.get()
+        telefone = entry_telefone.get()
+        senha = entry_senha.get()
 
-def tela_cadastro():
-    limpar_tela()
-    tk.Label(janela, text="Cadastro de Cliente", font=("Arial", 14)).pack(pady=10)
+        if nome and cpf and email and telefone and senha:
+            try:
+                cursor.execute("INSERT INTO clientes (nome, cpf, email, telefone, senha) VALUES (?, ?, ?, ?, ?)",
+                               (nome, cpf, email, telefone, senha))
+                conn.commit()
+                messagebox.showinfo("Sucesso", "Conta criada com sucesso!")
+                janela_cadastro.destroy()
+            except sqlite3.IntegrityError:
+                messagebox.showerror("Erro", "E-mail já cadastrado.")
+        else:
+            messagebox.showwarning("Aviso", "Preencha todos os campos.")
 
-    entradas.clear()
-    campos = ["Nome", "CPF", "Email", "Telefone", "Senha"]
-    for campo in campos:
-        tk.Label(janela, text=campo).pack()
-        entrada = tk.Entry(janela, show="*" if campo == "Senha" else None, width=40)
-        entrada.pack()
-        entradas[campo] = entrada
+    janela_cadastro = tk.Toplevel(janela)
+    janela_cadastro.title("Criar Conta")
 
-    tk.Button(janela, text="Cadastrar", command=cadastrar_cliente, bg="green", fg="white").pack(pady=15)
-    tk.Button(janela, text="Voltar", command=tela_inicial).pack()
+    tk.Label(janela_cadastro, text="Nome").grid(row=0, column=0)
+    tk.Label(janela_cadastro, text="CPF").grid(row=1, column=0)
+    tk.Label(janela_cadastro, text="E-mail").grid(row=2, column=0)
+    tk.Label(janela_cadastro, text="Telefone").grid(row=3, column=0)
+    tk.Label(janela_cadastro, text="Senha").grid(row=4, column=0)
 
-def tela_login():
-    limpar_tela()
-    tk.Label(janela, text="Login", font=("Arial", 14)).pack(pady=10)
+    entry_nome = tk.Entry(janela_cadastro)
+    entry_cpf = tk.Entry(janela_cadastro)
+    entry_email = tk.Entry(janela_cadastro)
+    entry_telefone = tk.Entry(janela_cadastro)
+    entry_senha = tk.Entry(janela_cadastro, show="*")
 
-    entradas.clear()
-    for campo in ["Email", "Senha"]:
-        tk.Label(janela, text=campo).pack()
-        entrada = tk.Entry(janela, show="*" if campo == "Senha" else None, width=40)
-        entrada.pack()
-        entradas[campo] = entrada
+    entry_nome.grid(row=0, column=1)
+    entry_cpf.grid(row=1, column=1)
+    entry_email.grid(row=2, column=1)
+    entry_telefone.grid(row=3, column=1)
+    entry_senha.grid(row=4, column=1)
 
-    tk.Button(janela, text="Entrar", command=logar_cliente, bg="blue", fg="white").pack(pady=15)
-    tk.Button(janela, text="Voltar", command=tela_inicial).pack()
+    tk.Button(janela_cadastro, text="Salvar", command=salvar_dados).grid(row=5, column=0, columnspan=2)
 
-def tela_painel():
-    limpar_tela()
-    tk.Label(janela, text="Clientes Cadastrados", font=("Arial", 14)).pack(pady=10)
+def login():
+    def verificar_login():
+        email = entry_email.get()
+        senha = entry_senha.get()
+        cursor.execute("SELECT * FROM clientes WHERE email=? AND senha=?", (email, senha))
+        usuario = cursor.fetchone()
+        if usuario:
+            janela_login.destroy()
+            mostrar_painel_administrador()
+        else:
+            messagebox.showerror("Erro", "Login inválido.")
 
-    tree = ttk.Treeview(janela, columns=("Nome", "CPF", "Email", "Telefone"), show="headings")
-    for col in ("Nome", "CPF", "Email", "Telefone"):
-        tree.heading(col, text=col)
-        tree.column(col, width=120)
+    janela_login = tk.Toplevel(janela)
+    janela_login.title("Login")
+
+    tk.Label(janela_login, text="E-mail").grid(row=0, column=0)
+    tk.Label(janela_login, text="Senha").grid(row=1, column=0)
+
+    entry_email = tk.Entry(janela_login)
+    entry_senha = tk.Entry(janela_login, show="*")
+
+    entry_email.grid(row=0, column=1)
+    entry_senha.grid(row=1, column=1)
+
+    tk.Button(janela_login, text="Entrar", command=verificar_login).grid(row=2, column=0, columnspan=2)
+
+def mostrar_painel_administrador():
+    painel = tk.Toplevel(janela)
+    painel.title("Painel de Administração")
+
+    tree = ttk.Treeview(painel, columns=("ID", "Nome", "CPF", "Email", "Telefone"), show="headings")
+    tree.heading("ID", text="ID")
+    tree.heading("Nome", text="Nome")
+    tree.heading("CPF", text="CPF")
+    tree.heading("Email", text="E-mail")
+    tree.heading("Telefone", text="Telefone")
     tree.pack()
 
-    conn = sqlite3.connect("clientes.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT nome, cpf, email, telefone FROM clientes")
-    for linha in cursor.fetchall():
-        tree.insert("", tk.END, values=linha)
-    conn.close()
+    def carregar_usuarios():
+        for row in tree.get_children():
+            tree.delete(row)
+        cursor.execute("SELECT id, nome, cpf, email, telefone FROM clientes")
+        for usuario in cursor.fetchall():
+            tree.insert("", "end", values=usuario)
 
-    tk.Button(janela, text="Voltar", command=tela_inicial).pack(pady=10)
+    def deletar_usuario():
+        item = tree.selection()
+        if item:
+            usuario_id = tree.item(item, "values")[0]
+            cursor.execute("DELETE FROM clientes WHERE id=?", (usuario_id,))
+            conn.commit()
+            carregar_usuarios()
+            messagebox.showinfo("Sucesso", "Usuário deletado com sucesso.")
+        else:
+            messagebox.showwarning("Aviso", "Selecione um usuário para deletar.")
 
-# ---------- AÇÕES ----------
-def cadastrar_cliente():
-    dados = {campo: entrada.get() for campo, entrada in entradas.items()}
-    if not all(dados.values()):
-        messagebox.showwarning("Erro", "Preencha todos os campos.")
-        return
-
-    conn = sqlite3.connect("clientes.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO clientes (nome, cpf, email, telefone, senha) VALUES (?, ?, ?, ?, ?)",
-                       (dados["Nome"], dados["CPF"], dados["Email"], dados["Telefone"], dados["Senha"]))
-        conn.commit()
-        messagebox.showinfo("Sucesso", "Cadastro salvo com sucesso!")
-        tela_inicial()
-    except sqlite3.IntegrityError:
-        messagebox.showerror("Erro", "E-mail já cadastrado.")
-    finally:
-        conn.close()
-
-def logar_cliente():
-    email = entradas["Email"].get()
-    senha = entradas["Senha"].get()
-
-    conn = sqlite3.connect("clientes.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM clientes WHERE email = ? AND senha = ?", (email, senha))
-    resultado = cursor.fetchone()
-    conn.close()
-
-    if resultado:
-        tela_painel()
-    else:
-        messagebox.showerror("Erro", "Email ou senha incorretos.")
-
-def limpar_tela():
-    for widget in janela.winfo_children():
-        widget.destroy()
-
-# ---------- INTERFACE PRINCIPAL ----------
-entradas = {}
-janela = tk.Tk()
-janela.title("Cadastro de Clientes")
-janela.geometry("500x500")
-
-criar_banco()
-tela_inicial()
-janela.mainloop()
+    carregar_usuarios()
+    tk.Button(painel, text="Deletar Usuário Selecionado", command=deletar_usuario).pack(pady=10)
